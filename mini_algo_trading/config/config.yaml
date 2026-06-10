@@ -1,0 +1,38 @@
+# Mini Algo Trading System Configuration
+
+# Data
+data:
+  ticker: "RELIANCE.NS"
+  start_date: "2023-01-01"
+  end_date: "2024-01-01"
+  interval: "1d"
+  filepath: "data/market_data.csv"
+
+# Account
+account:
+  initial_capital: 100000.0
+
+# Risk Management
+risk:
+  stop_loss_pct: 0.02        
+  take_profit_pct: 0.05    
+  risk_pct: 0.01               
+
+# Backtest
+backtest:
+  allow_short: false
+
+# Strategy Selection
+active_strategy: "MA_Crossover"
+
+# Strategy Parameters
+strategies:
+  MA_Crossover:
+    fast_period: 20
+    slow_period: 50
+    ma_type: "EMA"
+
+  MACD:
+    fast_period: 12
+    slow_period: 26
+    signal_period: 9

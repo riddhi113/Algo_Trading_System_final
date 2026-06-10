@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algo Trading Dashboard</title>
+    <!-- Auth Guard: redirect to login if no token -->
+    <script>
+      (function(){
+        if (!localStorage.getItem('algo_token')) {
+          window.location.href = '/';
+        }
+      })();
+    </script>
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Chart.js for Equity Curve -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="/static/style.css?v=3">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Top HUD Header -->
+        <header class="hud-header">
+            <div class="logo-area">
+                <i class="fa-solid fa-chart-line logo-icon"></i>
+                <div class="logo-text">
+                    <h1 class="brand-title">Algo Trading</h1>
+                </div>
+            </div>
+
+            <div class="hud-stats">
+
+                <div class="hud-stat-item">
+                    <span class="hud-label">Active Symbol</span>
+                    <span class="hud-value" id="hud-ticker">-</span>
+                </div>
+                <div class="hud-stat-item">
+                    <span class="hud-label">Backtest Range</span>
+                    <span class="hud-value" id="hud-dates">-</span>
+                </div>
+                <div class="hud-stat-item">
+                    <span class="hud-label">Initial Balance</span>
+                    <span class="hud-value text-blue" id="hud-balance">-</span>
+                </div>
+                <div class="hud-stat-item">
+                    <span class="hud-label">Status</span>
+                    <span class="hud-value status-pill online"><i class="fa-solid fa-circle status-dot"></i>
+                        Connected</span>
+                </div>
+                <div class="hud-stat-item">
+                    <span class="hud-label">Logged in as</span>
+                    <span class="hud-value text-cyan" id="hud-user">-</span>
+                </div>
+                <button id="logout-btn" onclick="handleLogout()" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:.4rem .9rem;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='rgba(239,68,68,.3)'" onmouseout="this.style.background='rgba(239,68,68,.15)'">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <div class="main-workspace">
+            <!-- Sidebar Panel -->
+            <aside class="control-panel">
+                <form id="backtest-form" class="config-form">
+                    <div class="panel-section">
+                        <h3><i class="fa-solid fa-sliders icon"></i> Asset Configuration</h3>
+
+                        <div class="form-group">
+                            <label for="ticker-select">Select Asset</label>
+                            <select id="ticker-select">
+                                <option value="RELIANCE.NS">Reliance (RELIANCE.NS)</option>
+                                <option value="^NSEI">Nifty 50 (^NSEI)</option>
+                                <option value="^NSEBANK">Bank Nifty (^NSEBANK)</option>
+                                <option value="TCS.NS">TCS (TCS.NS)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col">
+                                <label for="start-date">Start Date</label>
+                                <input type="date" id="start-date" value="2023-01-01">
+                            </div>
+                            <div class="form-group col">
+                                <label for="end-date">End Date</label>
+                                <input type="date" id="end-date" value="2024-01-01">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="initial-capital">Starting Capital (₹)</label>
+                            <input type="number" id="initial-capital" value="100000" min="100">
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fa-solid fa-shield-halved icon"></i> Risk & Size Limits</h3>
+
+                        <div class="form-row">
+                            <div class="form-group col">
+                                <label for="stop-loss">Stop Loss (%)</label>
+                                <input type="number" id="stop-loss" value="2.0" step="0.1" min="0">
+                            </div>
+                            <div class="form-group col">
+                                <label for="take-profit">Take Profit (%)</label>
+                                <input type="number" id="take-profit" value="5.0" step="0.1" min="0">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col">
+                                <label for="risk-pct">Equity Risk (%)</label>
+                                <input type="number" id="risk-pct" value="1.0" step="0.1" min="0" max="10">
+                            </div>
+                            <div class="form-group col checkbox-col">
+                                <label for="allow-short" class="checkbox-label">
+                                    <input type="checkbox" id="allow-short">
+                                    Allow Shorts
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section">
+                        <h3><i class="fa-solid fa-brain icon"></i> Strategy Parameters</h3>
+
+                        <div class="form-group">
+                            <label for="strategy-select">Trading Strategy</label>
+                            <select id="strategy-select">
+                                <option value="MA_Crossover">MA Crossover</option>
+                                <option value="MACD">MACD Crossover</option>
+                                <option value="Compare">Compare Strategies</option>
+                            </select>
+                        </div>
+
+                        <!-- MA parameters -->
+                        <div id="ma-params" class="strategy-param-group">
+                            <div class="form-group">
+                                <label for="ma-type">Average Type</label>
+                                <select id="ma-type">
+                                    <option value="EMA">Exponential (EMA)</option>
+                                    <option value="SMA">Simple (SMA)</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col">
+                                    <label for="ma-fast">Fast Window</label>
+                                    <input type="number" id="ma-fast" value="20" min="2">
+                                </div>
+                                <div class="form-group col">
+                                    <label for="ma-slow">Slow Window</label>
+                                    <input type="number" id="ma-slow" value="50" min="5">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MACD parameters -->
+                        <div id="macd-params" class="strategy-param-group hidden">
+                            <div class="form-row">
+                                <div class="form-group col">
+                                    <label for="macd-fast">Fast EMA</label>
+                                    <input type="number" id="macd-fast" value="12" min="2">
+                                </div>
+                                <div class="form-group col">
+                                    <label for="macd-slow">Slow EMA</label>
+                                    <input type="number" id="macd-slow" value="26" min="5">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="macd-signal">Signal SMA</label>
+                                <input type="number" id="macd-signal" value="9" min="2">
+                            </div>
+                        </div>
+
+                        <button type="submit" form="backtest-form" id="run-btn" class="execute-btn" style="width: 100%; margin-top: 1rem; padding: 0.8rem; background: linear-gradient(135deg, #3b82f6, #06b6d4); border: none; border-radius: 8px; color: #fff; cursor: pointer; font-size: 0.9rem; font-family: inherit; font-weight: 600; box-shadow: 0 4px 15px rgba(59,130,246,0.3);">
+                            <i class="fa-solid fa-play"></i> RUN BACKTEST
+                        </button>
+                    </div>
+                </form>
+            </aside>
+
+            <!-- Dashboard Content -->
+            <main class="dashboard-viewport">
+                <!-- Loader Overlay -->
+                <div id="loader" class="loader-overlay hidden">
+                    <div class="spinner-container">
+                        <div class="double-bounce1"></div>
+                        <div class="double-bounce2"></div>
+                    </div>
+                    <p>Executing Backtest Engine...</p>
+                </div>
+
+                <!-- KPI Metric row -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="card-title">Net Return</span>
+                        <div class="card-main">
+                            <h2 id="kpi-return" class="text-green">+0.00%</h2>
+                        </div>
+                        <div class="card-footer">
+                            <span id="kpi-profit" class="text-green">+₹0.00</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <span class="card-title">Max Drawdown</span>
+                        <div class="card-main">
+                            <h2 id="kpi-drawdown" class="text-red">0.00%</h2>
+                        </div>
+                        <div class="card-footer">
+                            <span class="text-muted">Peak-to-Trough Decline</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <span class="card-title">Win Rate</span>
+                        <div class="card-main">
+                            <h2 id="kpi-winrate" class="text-green">0.0%</h2>
+                        </div>
+                        <div class="card-footer">
+                            <span id="kpi-ratio" class="text-muted">0 wins / 0 losses</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <span class="card-title">Sharpe Ratio</span>
+                        <div class="card-main">
+                            <h2 id="kpi-sharpe" class="text-cyan">0.00</h2>
+                        </div>
+                        <div class="card-footer">
+                            <span class="text-muted">Risk-Adjusted Return</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <span class="card-title">Benchmark Return</span>
+                        <div class="card-main">
+                            <h2 id="kpi-benchmark" class="text-green">+0.00%</h2>
+                        </div>
+                        <div class="card-footer">
+                            <span class="text-muted">Buy & Hold Return</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs Navigation -->
+                <div class="tab-container">
+                    <div class="tab-bar">
+                        <button class="tab-btn active" data-tab="price-tab" id="tab-btn-price">
+                            <i class="fa-solid fa-candlestick-chart"></i> Candlestick Chart
+                        </button>
+                        <button class="tab-btn" data-tab="equity-tab" id="tab-btn-equity">
+                            <i class="fa-solid fa-chart-line"></i> Performance Curve
+                        </button>
+                        <button class="tab-btn" data-tab="compare-tab" id="tab-btn-compare">
+                            <i class="fa-solid fa-scale-balanced"></i> Strategy Comparison
+                        </button>
+                        <button class="tab-btn" data-tab="trades-tab" id="tab-btn-trades">
+                            <i class="fa-solid fa-table-list"></i> Trade Log
+                        </button>
+                        <button class="tab-btn" data-tab="broker-tab" id="tab-btn-broker">
+                            <i class="fa-solid fa-building-columns"></i> Broker API
+                        </button>
+                    </div>
+
+                    <!-- Tab 1: Interactive Candlestick Chart -->
+                    <div class="tab-content active" id="price-tab">
+                        <div class="chart-wrapper">
+                            <div id="tv-chart" class="tv-chart-viewport"></div>
+                            <div class="chart-legend-overlay">
+                                <span id="legend-ticker">-</span>:
+                                Open <span id="legend-open">-</span> |
+                                High <span id="legend-high">-</span> |
+                                Low <span id="legend-low">-</span> |
+                                Close <span id="legend-close">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Equity Curve -->
+                    <div class="tab-content" id="equity-tab">
+                        <div class="chart-wrapper line-chart-container">
+                            <canvas id="equityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Completed Trades Table -->
+                    <div class="tab-content" id="trades-tab">
+                        <div class="trades-panel">
+                            <div class="panel-header">
+                                <div class="search-box">
+                                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                                    <input type="text" id="trade-search"
+                                        placeholder="Search trades (e.g. BUY, SL, TP)...">
+                                </div>
+                                <button id="export-csv-btn" class="action-btn">
+                                    <i class="fa-solid fa-file-arrow-down"></i> Export Trades CSV
+                                </button>
+                            </div>
+
+                            <div class="table-container">
+                                <table id="trades-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Trade ID</th>
+                                            <th>Direction</th>
+                                            <th>Quantity</th>
+                                            <th>Entry Date</th>
+                                            <th>Entry Price</th>
+                                            <th>Exit Date</th>
+                                            <th>Exit Price</th>
+                                            <th>Realized PnL</th>
+                                            <th>Return (%)</th>
+                                            <th>Exit Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="10" class="text-center text-gray">Run a simulation parameters
+                                                set to populate trade logs.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 5: Broker API Panel -->
+                    <div class="tab-content" id="broker-tab" style="overflow-y: auto; height: 100%; display: block;">
+                        <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1.5rem;">
+
+                            <!-- Balance & Positions row -->
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                                <div style="background:rgba(255,255,255,.03);border:1px solid rgba(99,179,237,.12);border-radius:12px;padding:1.25rem;">
+                                    <h4 style="color:#63b3ed;margin-bottom:.75rem;font-size:.85rem;text-transform:uppercase;letter-spacing:.8px;"><i class="fa-solid fa-wallet"></i> Account Balance</h4>
+                                    <div id="broker-balance" style="font-size:1.6rem;font-weight:700;color:#e2e8f0;">—</div>
+                                    <div id="broker-equity" style="font-size:.85rem;color:#64748b;margin-top:.25rem;">Total equity: —</div>
+                                    <button onclick="brokerGetBalance()" style="margin-top:.75rem;padding:.45rem .9rem;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93c5fd;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                                </div>
+                                <div style="background:rgba(255,255,255,.03);border:1px solid rgba(99,179,237,.12);border-radius:12px;padding:1.25rem;">
+                                    <h4 style="color:#63b3ed;margin-bottom:.75rem;font-size:.85rem;text-transform:uppercase;letter-spacing:.8px;"><i class="fa-solid fa-briefcase"></i> Open Positions</h4>
+                                    <div id="broker-positions" style="font-size:.85rem;color:#94a3b8;">No open positions.</div>
+                                    <button onclick="brokerGetPositions()" style="margin-top:.75rem;padding:.45rem .9rem;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93c5fd;border-radius:8px;cursor:pointer;font-size:.8rem;font-family:inherit;"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                                </div>
+                            </div>
+
+                            <!-- Place Order form -->
+                            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(99,179,237,.12);border-radius:12px;padding:1.25rem;">
+                                <h4 style="color:#63b3ed;margin-bottom:1rem;font-size:.85rem;text-transform:uppercase;letter-spacing:.8px;"><i class="fa-solid fa-arrow-trend-up"></i> Place Order (Mock)</h4>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;">
+                                    <div><label style="font-size:.75rem;color:#64748b;">Ticker</label><input id="bo-ticker" value="RELIANCE.NS" style="width:100%;padding:.5rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-family:inherit;font-size:.85rem;"></div>
+                                    <div><label style="font-size:.75rem;color:#64748b;">Direction</label><select id="bo-dir" style="width:100%;padding:.5rem;background:#0d1526;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-family:inherit;font-size:.85rem;"><option>LONG</option><option>SHORT</option></select></div>
+                                    <div><label style="font-size:.75rem;color:#64748b;">Quantity</label><input id="bo-qty" type="number" value="10" min="0.01" step="0.01" style="width:100%;padding:.5rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-family:inherit;font-size:.85rem;"></div>
+                                    <div><label style="font-size:.75rem;color:#64748b;">Price (₹)</label><input id="bo-price" type="number" value="2500" min="0.01" step="0.01" style="width:100%;padding:.5rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-family:inherit;font-size:.85rem;"></div>
+                                    <div><label style="font-size:.75rem;color:#64748b;">Stop Loss (₹)</label><input id="bo-sl" type="number" placeholder="optional" style="width:100%;padding:.5rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-family:inherit;font-size:.85rem;"></div>
+                                    <div><label style="font-size:.75rem;color:#64748b;">Take Profit (₹)</label><input id="bo-tp" type="number" placeholder="optional" style="width:100%;padding:.5rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-family:inherit;font-size:.85rem;"></div>
+                                </div>
+                                <button onclick="brokerPlaceOrder()" style="margin-top:1rem;padding:.6rem 1.4rem;background:linear-gradient(135deg,#3b82f6,#06b6d4);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:.9rem;font-family:inherit;font-weight:600;"><i class="fa-solid fa-paper-plane"></i> Place Order</button>
+                                <div id="broker-order-msg" style="margin-top:.75rem;font-size:.82rem;color:#64748b;"></div>
+                            </div>
+
+                            <!-- Order History -->
+                            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(99,179,237,.12);border-radius:12px;padding:1.25rem;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+                                    <h4 style="color:#63b3ed;font-size:.85rem;text-transform:uppercase;letter-spacing:.8px;"><i class="fa-solid fa-clock-rotate-left"></i> Order History</h4>
+                                    <button onclick="brokerGetHistory()" style="padding:.4rem .8rem;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93c5fd;border-radius:8px;cursor:pointer;font-size:.78rem;font-family:inherit;"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                                </div>
+                                <div id="broker-history" style="font-size:.82rem;color:#94a3b8;">No history yet.</div>
+                            </div>
+
+                            <!-- Live WebSocket Feed -->
+                            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(99,179,237,.12);border-radius:12px;padding:1.25rem;">
+                                <h4 style="color:#63b3ed;margin-bottom:.75rem;font-size:.85rem;text-transform:uppercase;letter-spacing:.8px;"><i class="fa-solid fa-tower-broadcast"></i> Live Price Feed (WebSocket)</h4>
+                                <div id="live-feed-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;"></div>
+                                <div id="ws-status" style="margin-top:.6rem;font-size:.75rem;color:#64748b;"><i class="fa-solid fa-circle" style="color:#f59e0b;font-size:.55rem;"></i> Connecting...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Strategy Comparison -->
+                    <div class="tab-content" id="compare-tab">
+                        <div class="comparison-workspace">
+                            <!-- Comparison KPIs -->
+                            <div class="comparison-grid">
+                                <div class="comp-column">
+                                    <h4 class="comp-strat-header text-cyan"><i class="fa-solid fa-chart-line"></i> MA
+                                        Crossover</h4>
+                                    <div class="comp-card-grid">
+                                        <div class="comp-stat-card">
+                                            <span class="comp-stat-label">Net Return</span>
+                                            <h3 id="comp-ma-return" class="text-green">+0.00%</h3>
+                                            <span id="comp-ma-profit" class="text-green">+₹0.00</span>
+                                        </div>
+                                        <div class="comp-stat-card">
+                                            <span class="comp-stat-label">Max Drawdown</span>
+                                            <h3 id="comp-ma-drawdown" class="text-red">0.00%</h3>
+                                        </div>
+                                        <div class="comp-stat-card">
+                                            <span class="comp-stat-label">Win Rate</span>
+                                            <h3 id="comp-ma-winrate" class="text-green">0.0%</h3>
+                                            <span id="comp-ma-trades" class="text-muted">0 W / 0 L</span>
+                                        </div>
+                                        <div class="comp-stat-card">
+                                            <span class="comp-stat-label">Sharpe Ratio</span>
+                                            <h3 id="comp-ma-sharpe" class="text-cyan">0.00</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="comp-column">
+                                    <h4 class="comp-strat-header text-purple"><i class="fa-solid fa-chart-line"></i>
+                                        MACD Crossover</h4>
+                                    <div class="comp-card-grid">
+                                        <div class="comp-stat-card">
+                                            <span class="comp-stat-label">Net Return</span>
+                                            <h3 id="comp-macd-return" class="text-green">+0.00%</h3>
+                                            <span id="comp-macd-profit" class="text-green">+₹0.00</span>
+                                        </div>
+                                        <div class="comp-stat-card">
+                                            <span class="comp-stat-label">Max Drawdown</span>
+                                            <h3 id="comp-macd-drawdown" class="text-red">0.00%</h3>
+                                        </div>
+                                        <div class="comp-stat-card">
+                                            <span class="comp-stat-label">Win Rate</span>
+                                            <h3 id="comp-macd-winrate" class="text-green">0.0%</h3>
+                                            <span id="comp-macd-trades" class="text-muted">0 W / 0 L</span>
+                                        </div>
+                                        <div class="comp-stat-card">
+                                            <span class="comp-stat-label">Sharpe Ratio</span>
+                                            <h3 id="comp-macd-sharpe" class="text-purple">0.00</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Comparison Chart -->
+                            <div class="comparison-chart-container line-chart-container"
+                                style="position: relative; height: 350px; margin-top: 1.5rem;">
+                                <canvas id="comparisonChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/app.js"></script>
+</body>
+
+</html>

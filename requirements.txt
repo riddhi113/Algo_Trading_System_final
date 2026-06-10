@@ -1,0 +1,11 @@
+yfinance
+pandas
+pyyaml
+numpy
+plotly
+fastapi
+uvicorn
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+websockets

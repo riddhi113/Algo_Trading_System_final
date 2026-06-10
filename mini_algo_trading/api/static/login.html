@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Algo Trading System — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #060b14;
+      --surface:   #0d1526;
+      --border:    rgba(99,179,237,0.15);
+      --accent:    #3b82f6;
+      --accent-2:  #06b6d4;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --green:     #10b981;
+      --red:       #ef4444;
+      --radius:    14px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── animated grid background ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── floating glow orbs ── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+      animation: drift 8s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 500px; height: 500px; background: rgba(59,130,246,.15); top: -150px; left: -150px; animation-delay: 0s; }
+    .orb-2 { width: 400px; height: 400px; background: rgba(6,182,212,.12); bottom: -100px; right: -100px; animation-delay: -4s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(30px, 20px) scale(1.05); }
+    }
+
+    /* ── page layout ── */
+    .page {
+      position: relative; z-index: 1;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    /* ── glass card ── */
+    .auth-card {
+      width: 100%; max-width: 440px;
+      background: rgba(13,21,38,.85);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.5rem 2.5rem 2rem;
+      backdrop-filter: blur(24px);
+      box-shadow: 0 0 60px rgba(59,130,246,.08), 0 24px 60px rgba(0,0,0,.5);
+      animation: slideUp .5s cubic-bezier(.16,1,.3,1) both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── logo / brand ── */
+    .brand {
+      display: flex; align-items: center; gap: .75rem;
+      margin-bottom: 2rem;
+    }
+    .brand-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; color: #fff;
+      box-shadow: 0 0 20px rgba(59,130,246,.4);
+    }
+    .brand-text h1 {
+      font-size: 1.15rem; font-weight: 700; letter-spacing: -.3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .brand-text p { font-size: .75rem; color: var(--muted); margin-top: 1px; }
+
+    /* ── tab switcher ── */
+    .tab-switcher {
+      display: flex; gap: .5rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 4px;
+      margin-bottom: 1.75rem;
+    }
+    .tab-btn {
+      flex: 1; padding: .55rem;
+      background: none; border: none;
+      border-radius: 7px; cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      font-size: .875rem; font-weight: 500;
+      color: var(--muted);
+      transition: all .2s;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(59,130,246,.3);
+    }
+
+    /* ── forms ── */
+    .auth-form { display: flex; flex-direction: column; gap: 1rem; }
+    .form-hidden { display: none; }
+
+    .form-group { display: flex; flex-direction: column; gap: .4rem; }
+    .form-group label {
+      font-size: .8rem; font-weight: 500; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .8px;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex; align-items: center;
+    }
+    .input-icon {
+      position: absolute; left: .9rem;
+      color: var(--muted); font-size: .9rem;
+      pointer-events: none;
+    }
+    .input-wrap input {
+      width: 100%; padding: .75rem .9rem .75rem 2.5rem;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif; font-size: .95rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .input-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+    }
+    .input-wrap input::placeholder { color: var(--muted); }
+    .toggle-pw {
+      position: absolute; right: .9rem;
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: .85rem;
+      transition: color .2s;
+    }
+    .toggle-pw:hover { color: var(--accent); }
+
+    /* ── submit button ── */
+    .submit-btn {
+      width: 100%; padding: .85rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none; border-radius: 10px; cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem; font-weight: 600; color: #fff;
+      letter-spacing: .3px;
+      box-shadow: 0 4px 20px rgba(59,130,246,.35);
+      transition: transform .15s, box-shadow .15s, opacity .15s;
+      margin-top: .25rem;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+    }
+    .submit-btn:hover  { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(59,130,246,.45); }
+    .submit-btn:active { transform: translateY(0); }
+    .submit-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+    /* ── alert message ── */
+    .alert {
+      padding: .75rem 1rem;
+      border-radius: 10px; font-size: .875rem;
+      display: flex; align-items: center; gap: .6rem;
+      animation: fadeIn .3s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    .alert-error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.3);  color: #fca5a5; }
+    .alert-success { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); color: #6ee7b7; }
+    .alert-hidden  { display: none; }
+
+    /* ── footer hint ── */
+    .hint {
+      text-align: center; margin-top: 1.25rem;
+      font-size: .8rem; color: var(--muted);
+    }
+    .hint code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255,255,255,.07);
+      padding: 2px 6px; border-radius: 5px;
+      color: var(--accent-2); font-size: .78rem;
+    }
+
+    /* ── loading spinner inside button ── */
+    .btn-spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: none;
+    }
+    .submit-btn.loading .btn-spinner { display: block; }
+    .submit-btn.loading .btn-label  { display: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── live ticker bar ── */
+    .ticker-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 32px;
+      background: rgba(13,21,38,.9);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      display: flex; align-items: center;
+      overflow: hidden; z-index: 10;
+    }
+    .ticker-scroll {
+      display: flex; gap: 2.5rem;
+      white-space: nowrap;
+      animation: scroll-x 20s linear infinite;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .72rem;
+    }
+    .ticker-item { display: flex; gap: .4rem; align-items: center; }
+    .ticker-sym  { color: var(--muted); }
+    .ticker-prc  { color: var(--text); font-weight: 500; }
+    .ticker-chg.up   { color: var(--green); }
+    .ticker-chg.down { color: var(--red); }
+
+    @keyframes scroll-x {
+      from { transform: translateX(100vw); }
+      to   { transform: translateX(-100%); }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="page">
+    <div class="auth-card">
+
+      <!-- Brand -->
+      <div class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-chart-candlestick"></i></div>
+        <div class="brand-text">
+          <h1>Algo Trading System</h1>
+          <p>Institutional-grade backtesting platform</p>
+        </div>
+      </div>
+
+      <!-- Tab switcher -->
+      <div class="tab-switcher" role="tablist">
+        <button class="tab-btn active" id="tab-login-btn" onclick="switchTab('login')" role="tab">
+          <i class="fa-solid fa-right-to-bracket"></i> Login
+        </button>
+        <button class="tab-btn" id="tab-register-btn" onclick="switchTab('register')" role="tab">
+          <i class="fa-solid fa-user-plus"></i> Register
+        </button>
+      </div>
+
+      <!-- Alert -->
+      <div id="alert-box" class="alert alert-hidden"></div>
+
+      <!-- ── Login Form ── -->
+      <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-user"><i class="fa-solid fa-user"></i> Username</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-user input-icon"></i>
+            <input type="text" id="login-user" placeholder="Enter username" autocomplete="username" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="login-pass"><i class="fa-solid fa-lock"></i> Password</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password" required>
+            <button type="button" class="toggle-pw" onclick="togglePw('login-pass', this)" tabindex="-1">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="login-btn">
+          <div class="btn-spinner"></div>
+          <span class="btn-label"><i class="fa-solid fa-right-to-bracket"></i> Sign In</span>
+        </button>
+      </form>
+
+      <!-- ── Register Form ── -->
+      <form id="register-form" class="auth-form form-hidden" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="reg-user">Username</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-user input-icon"></i>
+            <input type="text" id="reg-user" placeholder="Choose a username" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reg-pass">Password</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <input type="password" id="reg-pass" placeholder="Min 6 characters" required>
+            <button type="button" class="toggle-pw" onclick="togglePw('reg-pass', this)" tabindex="-1">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reg-confirm">Confirm Password</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <input type="password" id="reg-confirm" placeholder="Repeat password" required>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="reg-btn">
+          <div class="btn-spinner"></div>
+          <span class="btn-label"><i class="fa-solid fa-user-plus"></i> Create Account</span>
+        </button>
+      </form>
+
+
+    </div>
+  </div>
+
+  <!-- Live ticker bar -->
+  <div class="ticker-bar">
+    <div class="ticker-scroll" id="ticker-scroll">
+      <span class="ticker-item"><span class="ticker-sym">RELIANCE.NS</span><span class="ticker-prc" id="t-rel">2500.00</span><span class="ticker-chg up" id="tc-rel">▲ 0.00%</span></span>
+      <span class="ticker-item"><span class="ticker-sym">^NSEI</span><span class="ticker-prc" id="t-nsei">22500.00</span><span class="ticker-chg up" id="tc-nsei">▲ 0.00%</span></span>
+      <span class="ticker-item"><span class="ticker-sym">TCS.NS</span><span class="ticker-prc" id="t-tcs">3800.00</span><span class="ticker-chg up" id="tc-tcs">▲ 0.00%</span></span>
+      <span class="ticker-item"><span class="ticker-sym">^NSEBANK</span><span class="ticker-prc" id="t-bnk">48000.00</span><span class="ticker-chg up" id="tc-bnk">▲ 0.00%</span></span>
+    </div>
+  </div>
+
+  <script>
+    // ── Tab switching ──────────────────────────────────────────────────────────
+    function switchTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('login-form').classList.toggle('form-hidden', !isLogin);
+      document.getElementById('register-form').classList.toggle('form-hidden', isLogin);
+      document.getElementById('tab-login-btn').classList.toggle('active', isLogin);
+      document.getElementById('tab-register-btn').classList.toggle('active', !isLogin);
+      hideAlert();
+    }
+
+    // ── Toggle password visibility ─────────────────────────────────────────────
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      const isText = inp.type === 'text';
+      inp.type = isText ? 'password' : 'text';
+      btn.querySelector('i').className = isText ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+    }
+
+    // ── Alert helpers ──────────────────────────────────────────────────────────
+    function showAlert(msg, type = 'error') {
+      const box = document.getElementById('alert-box');
+      box.className = `alert alert-${type}`;
+      box.innerHTML = `<i class="fa-solid fa-${type === 'error' ? 'circle-exclamation' : 'circle-check'}"></i> ${msg}`;
+    }
+    function hideAlert() {
+      document.getElementById('alert-box').className = 'alert alert-hidden';
+    }
+
+    // ── Set button loading state ───────────────────────────────────────────────
+    function setLoading(btnId, loading) {
+      const btn = document.getElementById(btnId);
+      btn.classList.toggle('loading', loading);
+      btn.disabled = loading;
+    }
+
+    // ── Login handler ──────────────────────────────────────────────────────────
+    async function handleLogin(e) {
+      e.preventDefault();
+      hideAlert();
+      const username = document.getElementById('login-user').value.trim();
+      const password = document.getElementById('login-pass').value;
+      if (!username || !password) { showAlert('Please fill in all fields.'); return; }
+
+      setLoading('login-btn', true);
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert(data.detail || 'Login failed. Check your credentials.');
+        } else {
+          // Store token and redirect to dashboard
+          localStorage.setItem('algo_token', data.access_token);
+          localStorage.setItem('algo_user', data.username);
+          showAlert(`Welcome back, ${data.username}! Redirecting...`, 'success');
+          setTimeout(() => { window.location.href = '/dashboard'; }, 900);
+        }
+      } catch (err) {
+        showAlert('Network error — is the server running?');
+      } finally {
+        setLoading('login-btn', false);
+      }
+    }
+
+    // ── Register handler ───────────────────────────────────────────────────────
+    async function handleRegister(e) {
+      e.preventDefault();
+      hideAlert();
+      const username = document.getElementById('reg-user').value.trim();
+      const password = document.getElementById('reg-pass').value;
+      const confirm  = document.getElementById('reg-confirm').value;
+
+      if (!username || !password) { showAlert('Please fill in all fields.'); return; }
+      if (password !== confirm)    { showAlert('Passwords do not match.'); return; }
+      if (password.length < 6)     { showAlert('Password must be at least 6 characters.'); return; }
+
+      setLoading('reg-btn', true);
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, confirm_password: confirm }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert(data.detail || 'Registration failed.');
+        } else {
+          showAlert(data.message, 'success');
+          setTimeout(() => switchTab('login'), 2000);
+        }
+      } catch (err) {
+        showAlert('Network error — is the server running?');
+      } finally {
+        setLoading('reg-btn', false);
+      }
+    }
+
+    // ── WebSocket live ticker ──────────────────────────────────────────────────
+    const TICKER_MAP = {
+      'RELIANCE.NS': { price: 't-rel',  change: 'tc-rel'  },
+      '^NSEI':       { price: 't-nsei', change: 'tc-nsei' },
+      'TCS.NS':      { price: 't-tcs',  change: 'tc-tcs'  },
+      '^NSEBANK':    { price: 't-bnk',  change: 'tc-bnk'  },
+    };
+
+    function connectWS() {
+      const ws = new WebSocket(`ws://${location.host}/ws/live`);
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type !== 'tick') return;
+          msg.data.forEach(tick => {
+            const ids = TICKER_MAP[tick.symbol];
+            if (!ids) return;
+            const priceEl  = document.getElementById(ids.price);
+            const changeEl = document.getElementById(ids.change);
+            if (priceEl)  priceEl.textContent  = tick.price.toFixed(2);
+            if (changeEl) {
+              const up = tick.change_pct >= 0;
+              changeEl.textContent = `${up ? '▲' : '▼'} ${Math.abs(tick.change_pct).toFixed(2)}%`;
+              changeEl.className   = `ticker-chg ${up ? 'up' : 'down'}`;
+            }
+          });
+        } catch {}
+      };
+      ws.onclose = () => setTimeout(connectWS, 3000);
+    }
+    connectWS();
+  </script>
+</body>
+</html>
