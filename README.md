@@ -14,7 +14,6 @@ A modular, lightweight Algorithmic Trading Backtester and Web Dashboard built in
 - **Local Data Prioritization**: Automatically uses your local `all_market_data.csv` to ensure fast, offline-capable backtesting without constantly hitting Yahoo Finance.
 - **Active Risk Management**: Support for Stop Loss, Take Profit, and risk-adjusted position sizing (e.g., risking only 1% of total equity per trade).
 - **Comprehensive Performance Metrics**: Net PnL, Benchmark returns comparison, win rate, profit factor, maximum drawdown (peak-to-trough), and annualized Sharpe ratio.
-
 ---
 
 ## 🏗 Architecture Flow
