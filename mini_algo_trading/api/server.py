@@ -45,7 +45,7 @@ from mini_algo_trading.strategies.macd import MACDStrategy
 from mini_algo_trading.backtest.engine import BacktestEngine
 from mini_algo_trading.metrics.performance import calculate_performance_metrics
 from mini_algo_trading.broker.mock_broker import MockBroker
-from mini_algo_trading.api.auth import authenticate_user, create_access_token, verify_token
+from mini_algo_trading.api.auth import authenticate_user, create_access_token, verify_token, register_user
 from mini_algo_trading.utils.logger import logger
 
 # ── App Init ──────────────────────────────────────────────────────────────────
@@ -146,17 +146,20 @@ async def login(req: LoginRequest):
 @app.post("/api/auth/register", tags=["Auth"])
 async def register(req: RegisterRequest):
     """
-    Register endpoint — in this demo, only Admin is supported.
-    Returns an informational message.
+    Register endpoint — now allows creating a new account.
     """
     if req.password != req.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
     if len(req.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
-    # In production: save to DB. For Step 7 demo, just acknowledge.
+    
+    success = register_user(req.username, req.password)
+    if not success:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
     return {
-        "status": "info",
-        "message": f"Account '{req.username}' registration received. Contact admin to activate."
+        "status": "success",
+        "message": f"Account '{req.username}' created successfully! You can now log in."
     }
 
 
@@ -372,15 +375,30 @@ def _run_backtest_logic(req: BacktestRequest):
     temp_csv = f"{temp_dir}/temp_api_{req.ticker}_{req.start_date}_{req.end_date}.csv"
 
     try:
-        df = fetch_historical_data(
-            ticker=req.ticker,
-            start_date=req.start_date,
-            end_date=req.end_date,
-            interval=req.interval,
-            output_path=temp_csv,
-        )
-        if df is None or df.empty:
-            raise HTTPException(status_code=400, detail=f"No data for: {req.ticker}")
+        local_data_path = "data/all_market_data.csv"
+        data_found_locally = False
+
+        if os.path.exists(local_data_path):
+            all_df = pd.read_csv(local_data_path)
+            filtered_df = all_df[all_df["Symbol"] == req.ticker].copy()
+            if not filtered_df.empty:
+                filtered_df["Date"] = pd.to_datetime(filtered_df["Date"])
+                mask = (filtered_df["Date"] >= pd.to_datetime(req.start_date)) & (filtered_df["Date"] <= pd.to_datetime(req.end_date))
+                filtered_df = filtered_df.loc[mask]
+                if not filtered_df.empty:
+                    filtered_df.to_csv(temp_csv, index=False)
+                    data_found_locally = True
+
+        if not data_found_locally:
+            df = fetch_historical_data(
+                ticker=req.ticker,
+                start_date=req.start_date,
+                end_date=req.end_date,
+                interval=req.interval,
+                output_path=temp_csv,
+            )
+            if df is None or df.empty:
+                raise HTTPException(status_code=400, detail=f"No data for: {req.ticker}")
 
         cleaned_df = load_market_data(temp_csv)
 
@@ -514,9 +532,24 @@ async def run_comparison(req: BacktestRequest, current_user: dict = Depends(requ
     temp_csv = f"{temp_dir}/temp_compare_{req.ticker}_{req.start_date}_{req.end_date}.csv"
 
     try:
-        df = fetch_historical_data(ticker=req.ticker, start_date=req.start_date, end_date=req.end_date, interval=req.interval, output_path=temp_csv)
-        if df is None or df.empty:
-            raise HTTPException(status_code=400, detail=f"No data for: {req.ticker}")
+        local_data_path = "data/all_market_data.csv"
+        data_found_locally = False
+
+        if os.path.exists(local_data_path):
+            all_df = pd.read_csv(local_data_path)
+            filtered_df = all_df[all_df["Symbol"] == req.ticker].copy()
+            if not filtered_df.empty:
+                filtered_df["Date"] = pd.to_datetime(filtered_df["Date"])
+                mask = (filtered_df["Date"] >= pd.to_datetime(req.start_date)) & (filtered_df["Date"] <= pd.to_datetime(req.end_date))
+                filtered_df = filtered_df.loc[mask]
+                if not filtered_df.empty:
+                    filtered_df.to_csv(temp_csv, index=False)
+                    data_found_locally = True
+
+        if not data_found_locally:
+            df = fetch_historical_data(ticker=req.ticker, start_date=req.start_date, end_date=req.end_date, interval=req.interval, output_path=temp_csv)
+            if df is None or df.empty:
+                raise HTTPException(status_code=400, detail=f"No data for: {req.ticker}")
 
         cleaned_df = load_market_data(temp_csv)
 

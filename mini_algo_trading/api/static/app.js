@@ -160,6 +160,7 @@ let tvChartInstance = null;
 let equityChartInstance = null;
 let comparisonChartInstance = null;
 let currentTradesData = [];
+let currentChartData = [];
 
 
 //TAB CONTROLLER & RESIZING
@@ -349,6 +350,7 @@ function updateDashboard(data) {
 
     // 3. Render TradingView Candlestick Chart
     renderTradingViewChart(data.chart_data, data.ticker, data.status);
+    currentChartData = data.chart_data;
 
     // 4. Render Chart.js Equity Curve
     renderEquityChart(data.equity_curve);
@@ -690,6 +692,32 @@ exportCsvBtn.addEventListener("click", () => {
 window.addEventListener("DOMContentLoaded", () => {
     form.dispatchEvent(new Event("submit"));
 });
+
+const exportChartCsvBtn = document.getElementById("export-chart-csv-btn");
+if (exportChartCsvBtn) {
+    exportChartCsvBtn.addEventListener("click", () => {
+        if (!currentChartData || currentChartData.length === 0) {
+            alert("No chart data available for export.");
+            return;
+        }
+
+        let csvContent = "Date,Open,High,Low,Close,Volume,Fast_MA,Slow_MA,Signal\n";
+
+        currentChartData.forEach(d => {
+            csvContent += `${d.date},${d.open},${d.high},${d.low},${d.close},${d.volume},${d.fast_ma !== undefined && d.fast_ma !== null ? d.fast_ma : ""},${d.slow_ma !== undefined && d.slow_ma !== null ? d.slow_ma : ""},${d.signal || ""}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `chart_data_${document.getElementById("hud-ticker").innerText}_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+}
 
 // ----------------------------------------------------
 // 8. RENDER STRATEGY COMPARISON DASHBOARD

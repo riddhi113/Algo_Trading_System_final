@@ -55,6 +55,17 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
         return None
     return user
 
+def register_user(username: str, password: str) -> bool:
+    """Register a new user to the in-memory store."""
+    if username in USERS_DB:
+        return False
+    USERS_DB[username] = {
+        "username": username,
+        "hashed_password": pwd_context.hash(password),
+        "role": "user",
+    }
+    return True
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """

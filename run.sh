@@ -35,7 +35,6 @@ if [ ! -d "$VENV_DIR" ]; then
 fi
 
 # Activate virtual environment
-# shellcheck disable=SC1091
 source "$VENV_DIR/bin/activate"
 success "Virtual environment ready."
 
@@ -45,9 +44,8 @@ python3 mini_algo_trading/main.py "$@"
 success "Backtest complete."
 
 # Step 2: Start FastAPI Server
-# Kill any process already using port 8080 so we never get "Address already in use"
 if lsof -ti:8080 &>/dev/null; then
-    info "Port 8080 in use — stopping existing process..."
+    info "Port 8080 in use — stopping existing process."
     kill -9 $(lsof -ti:8080) 2>/dev/null || true
     sleep 1
 fi
